@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc symrefs="no"?>
+<?rfc sortrefs="yes"?>
+<?rfc compact="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc linkmailto="no" ?>
+<?rfc rfcedstyle="yes"?>
+<?rfc-ext allow-markup-in-artwork="yes" ?>
+<?rfc-ext include-references-in-index="yes" ?>
+<!DOCTYPE rfc>
+<rfc category="info" docName="draft-avrilionis-satp-setup-stage-01"
+     ipr="trust200902">
+  <front>
+    <title abbrev="Asset Schema Architecture">SATP Setup Stage</title>
+
+    <author fullname="Denis Avrilionis" initials="D." surname="Avrilionis">
+      <organization>Compellio S.A.</organization>
+
+      <address>
+        <email>denis@compell.io</email>
+      </address>
+    </author>
+
+    <author fullname="Thomas Hardjono" initials="T." surname="Hardjono">
+      <organization>MIT</organization>
+
+      <address>
+        <email>hardjono@mit.edu</email>
+      </address>
+    </author>
+
+    <date/>
+
+    <abstract>
+      <t> SATP Core defines an unidirectional transfer of assets in three
+      stages, namely the Transfer Initiation stage (Stage-1), the
+      Lock-Assertion stage (Stage-2) and the Commitment Establishment stage
+      (Stage-3). This document defines the Setup Phase, often called "Stage-0", 
+      prior to the execution of SATP Core. During Setup, the two Gateways that
+      would participate in the asset transfer are bound together via a
+      "transfer context". The transfer context conveys information regarding
+      the assets to be exchanged. Gateway can perform any kind of negotiation
+      based on that transfer context, before entering into SATP Core.</t>
+    </abstract>
+
+    <note title="Editorial Note">
+      <t> Discussion of this draft takes place on the SATP mailing list
+      (sat@ietf.org), which has its home page at <eref
+      target="https://datatracker.ietf.org/wg/satp/about/"/>.</t>
+    </note>
+  </front>
+
+  <middle>
+    <section anchor="introduction" title="Introduction">
+      <t>SATP, in its specification in SATP Core <xref
+      target="SATP-CORE"/>, defines a three-stage protocol for unidirectional
+      transfer of assets between two Networks. The protocol is executed by two
+      Gateways, according to the flow defined in section 5 of SATP Core. As
+      stated in SATP Core, "the interactions between the peer gateways prior
+      to transfer initiation stage (Stage-1) is referred to as the setup stage
+      (Stage-0)". Although the Setup stage is outside the scope of SATP Core,
+      it plays an important role in the overall consistency of the protocol. 
+      For example, during setup, gateways can access important information 
+      based on the nature of the assets to be transferred, including technical, 
+      business, or compliance data. This document defines the sequence
+      of interactions during Setup. These interactions among applications, 
+      gateways and networks lead to the binding of the two gateways 
+      that will then perform a specific transfer instance as defined in SATP Core.</t>
+
+      <t>Setup is triggered by the Client Application that originates the transfer 
+      sequence via a call to Gateway's G1 (via API1). The transfer context 
+      associated with the transfer instance conveys all required information 
+      about the assets to be transferred.</t>
+    </section>
+
+    <section anchor="stage0_flows" title="Stage 0 flows">
+    <t>The diagram below presents the sequence of actions during the Setup stage.</t>
+    
+    <t>App1 the "Originator Application" (driven by Alice) and App2 the 
+    "Beneficiary Application" (driven by Bob) must interact with each other in Stage-0 
+    before execution of SATP Core. The sequence of interactions is as follows:</t>
+      <ol>
+        <li>
+          <t>App1 (the Originator App) requests to gateway G1 (Originator Gateway) the creation of a 
+          transferContext (TC) related to one of more Tokenized Asset Records (TARs - 
+          see <xref target="SATP-ASSET-ARCH"/>). We assume App1 can access the definition of 
+          TARs, for example stored in an external Registry (accessing TAR definitions stored in 
+          a Registry by an App is outside the scope of this document. We assume such 
+          operations occurred before the execution of the Setup stage).
+          </t>
+        </li>
+        
+        <li>
+          <t>App1 receives the transferContext ID (TCID) from the Originator Gateway G1.
+          </t>
+        </li>    
+            
+        <li>
+          <t>App1 calls the relevant endpoint(s) in Network NW1 in order to bind the Digitized 
+          Asset Records (DARs -  see <xref target="SATP-ASSET-ARCH"/>) with the specific transferContext ID. 
+          Associating the transferContext with specific DARs in a Network is important, especially in case 
+          of competing transfer instances: the Network must associate the DARs with the correct transferContext ID
+          to maintain consistency of locking and thus avoid deadlocks / starvation, for example, when different 
+          SATP transfer instances compete for the transfer of the same DARs.        
+          </t>
+        </li>            
+
+        <li>
+          <t>App1 sends (propagates) the transferContext ID to App2.        
+          </t>
+        </li>        
+        
+         <li>
+          <t>App2 acknowledges propagation of the specific transferContext ID (via a return message to App1).             
+          </t>
+        </li>            
+
+        <li>
+          <t>App2 calls the relevant endpoin(s) in Network NW2 in order to prepare creation of DARs. 
+          This step aims at preparing NW2 for the transfer. For example, ensure 
+          collateralisation of assets, or perform compliance verifications before the effective transfer.             
+          </t>
+        </li>            
+
+        <li>
+          <t>App2 calls the gateway G2 to propagate the transferContext ID.             
+          </t>
+        </li>            
+
+        <li>
+          <t>Gateway G2 calls G1 (via API2) to perform binding of the two gateways for the specific Transfer 
+          Context ID.              
+          </t>
+        </li>    
+                
+        <li>
+          <t>At any moment after binding G2 with the Originator Gateway G1, App1 can start the execution 
+          of the SATP Core transfer instance.</t>
+        </li>    
+      </ol>
+      
+      <t>At the end of the execution of the transfer instance, the Apps can call their respective gateways (via API1)
+      to receive an update on the completion status of the transfer (messages 10 to 13). The completion status
+      can be either "commit" or "rollback".</t>
+    
+      <figure align="center" anchor="asset_schema_jsonld"
+              title="Stage 0 flow">
+        <artwork><![CDATA[   
+App1   NW1          G1                      G2          NW2   App2
+..|.....|............|......................|............|.....|.. 
+  |     |            |      Stage 0         |            |     | 
+  |     |            |                      |            |     |
+  |1:requestTC(TAR[])|                      |            |     |
+  |-----|----------->|                      |            |     |
+  |< - -|- - - - - - |                      |            |     |
+  | 2:TCID           |                      |            |     |
+  |     |            |                      |            |     |
+  |3:bindAssets(DARID, TCID)                |            |     |
+  |---->|            |                      |            |     |
+  |     |            |                      |            |     |
+  |     |            | 4:propagateTC(TCID)  |            |     |
+  |-----|------------|----------------------|------------|---->|
+  |< - -|- - - - - - |- - - - - - - - - - - |- - - - - - |- - -|
+  | 5:propagateTC_Ack(TCID)                 |            |     |
+  |     |            |                      |   6:bindTC(TCID) |
+  |     |            |                      |            |<----|
+  |     |            |                      |7:propagateTC(TCID)
+  |     |            |                      |<-----------|-----|
+  |     |            |  8:bindGateway(G2ID, TCID)        |     |
+  |     |            |<---------------------|            |     |
+  |     |            |                      |            |     |
+  |9:beginSATP(TCID) |                      |            |     |
+  |-----|----------->|                      |            |     |
+  |     |            |                      |            |     |
+ ////////////////////// SATP CORE EXECUTION /////////////////////
+  |     |            |                      |            |     |
+  |10:requestStatus(TCID)                   |            |     |
+  |-----|----------->|                      |            |     |
+  |< - -|- - - - - - |                      |            |     |
+  | 11:completionStatus                     |            |     |
+  |     |            |                      |            |     |
+  |     |            |                      |12:requestStatus(TCID)
+  |     |            |                      |<-----------|-----|
+  |     |            |                      |- - -|- - - - - ->|
+  |     |            |                      | 13:completionStatus
+  |     |            |                      |            |     |
+       ]]></artwork>
+      </figure>
+    </section>
+      
+      
+    <section anchor="stage0_preconditions" title="Stage 0 pre-conditions">
+      <t> To summarise, at the end of the Setup stage, the following conditions 
+      shall be met. Only if all these pre-conditions are true the SATP Core transfer
+      instance can be executed  (note: completion can be either commit or
+      rollback).<ul>
+          <li>The Originator Application (a.k.a. Client App A1, a.k.a. Alice)
+          has obtained a transfer context, i.e. information that
+          unambiguously defines a specific asset transfer instance related to
+          sending a well-defined set of assets (referenced by TARs) from 
+          a given Originator application to a given Beneficiary application.</li>
+
+          <li>NW1 is aware that this well-defined set of managed assets 
+          (owned by the originator) is going to be transferred for the given 
+          transfer context, and this at any moment in the future, based on G1 
+          initiative.</li>
+
+          <li>G1 and G2 are bound for the given transfer context TC</li>
+
+          <li>The Beneficiary Application (a.k.a. Client App A2, a.k.a. Bob)
+          knows that it will receive a well-defined set of assets for the
+          given transfer context TC</li>
+
+          <li>NW2 is aware that a well-defined set of assets will be
+          received for a given beneficiary and for the given transfer context TC</li>
+
+        </ul> </t>
+    </section>
+    
+    
+    <section anchor="annex_transfer_context" title="Annex: Transfer Context Example">
+        <t>Below we give an example of a transfer context. The following can be noted:</t>
+           <ul>
+             <li><t>The identifier of the transfer context contains a reference to the originator gateway address.</t>
+             </li>
+             <li><t>There might be several sessions associated with a transfer context. For example, in case of 
+             recovery from a crash, a new session might be created for the specific transfer context (the example 
+             shows a transfer context with two previous sessions in history).</t>
+             </li>             
+             <li><t>tarIDs refer to TAR that are stored in Registries and can be accessed by Gateways via API3.</t>
+             </li>                          
+             <li><t>In order not to lock assets forever a specific transfer expiration time limit can be set.</t>
+             </li>      
+            <li><t>Network endpoints are important for traceability reasons so it is clear what execution unit 
+            in the networks managed the lock/extinguishing (NW1) and creation (NW2) operations for the specific transfer context.</t>
+             </li>                       
+           </ul>
+
+          <figure align="left" anchor="transfer_context"
+              title="Transfer Context example">
+        <artwork><![CDATA[   
+{
+   "transferContextID": "urn:satp:transferContext:0x517BBF0c9B71f64b5807f644E1F1bacD3Afb3ec2.0xf3beac30c498d9e26865f34fcaa57dbb935b0d74",
+   "transferStatus": "inProgress",
+   "activeSessionID": "urn:satp:session:0x517BBF0c9B71f64b5807f644E1F1bacD3Afb3ec2:0xf3beac30c498d9e26865f34fcaa57dbb935b0d74:0x06012c8cf97BEaD5deAe237070F9587f8E7A266d",
+   "sessionHistory": [
+      "urn:satp:session:0x517BBF0c9B71f64b5807f644E1F1bacD3Afb3ec2:0xf3beac30c498d9e26865f34fcaa57dbb935b0d74:0x06012c8cf97BEaD5deAe237070F9587f8E7A2777",
+      "urn:satp:session:0x517BBF0c9B71f64b5807f644E1F1bacD3Afb3ec2:0xf3beac30c498d9e26865f34fcaa57dbb935b0d74:0x06012c8cf97BEaD5deAe237070F9587f8E7A2888"
+   ],
+   "egress": {
+      "gw1ID": "urn:satp:gateway:0x517BBF0c9B71f64b5807f644E1F1bacD3Afb3ec2",
+      "nw1ID": "urn:satp:network:0xa9c28ce2141b56c474f1dc504bee9b0100000089000000000000000000000012",
+      "nw1EndPoint": "0x6e329e9c3653a0ab99e806e2267e8e4dff4d3fbb",
+      "assets": [
+         {
+            "assetID": "urn:tar:eip155.137:0x897374acc81080d4fb818ee8c5f8822d937d8912",
+            "transferExpiration": "2023-07-26T20:20:39+00:00"
+         }
+      ]
+   },
+   "ingress": {
+      "gw2ID": "urn:satp:gateway:0xc24854b8457710f98ca254308b65e18b12ca0504",
+      "nw2ID": "0xa9c28ce2141b56c474f1dc504bee9b0100000001000000000000000000000012",
+      "nw2EndPoint": "0x0debadd980c7eec904cf57e105e3993688107aaf"
+   }
+}  
+       ]]></artwork>
+      </figure>
+    </section>
+  </middle>
+
+  <back>
+    <references title="References">
+      <reference anchor="SATP-CORE">
+        <front>
+          <title>SATP Core</title>
+
+          <author fullname="Thomas Hardjono" initials="T." surname="Hardjono"/>
+
+          <date year="2022"/>
+        </front>
+
+        <seriesInfo name="Internet-Draft" value="draft-ietf-satp-core"/>
+      </reference>
+
+      <reference anchor="SATP-ARCH">
+        <front>
+          <title>SATP Architecture</title>
+
+          <author fullname="Thomas Hardjono" initials="T." surname="Hardjono"/>
+
+          <date year="2022"/>
+        </front>
+
+        <seriesInfo name="Internet-Draft" value="draft-ietf-satp-architecture"/>
+      </reference>
+
+      <reference anchor="SATP-ASSET-ARCH">
+        <front>
+          <title>Asset Schema Architecture for Asset Exchange</title>
+
+          <author fullname="Denis Avrilionis" initials="D."
+                  surname="Avrilionis"/>
+
+          <author fullname="Thomas Hardjono" initials="T." surname="Hardjono"/>
+
+          <date year="2024"/>
+        </front>
+
+        <seriesInfo name="Internet-Draft"
+                    value="draft-avrilionis-satp-asset-schema-architecture"/>
+      </reference>
+    </references>
+  </back>
+</rfc>
